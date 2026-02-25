@@ -16,6 +16,8 @@ from constants.indexer import kSpindexer, kTrasnfer
 from subsystems.drivetrain import drivetrain
 from subsystems.vision import mono_limelight
 
+from subsystems.vision import py_cam
+
 from subsystems.controlled_motor import ControlledTalonMotor
 
 from commands2 import button, ParallelCommandGroup
@@ -23,6 +25,10 @@ from commands2 import button, ParallelCommandGroup
 
 class RobotContainer:
     def __init__(self) -> None:
+
+        #pycam stuff
+        self.sixseven = py_cam.AHHHHHHHHH()
+
         self._controller_1 = (
             XboxController(port=0).with_deadband(0.05).with_smoothing(1)
         )
