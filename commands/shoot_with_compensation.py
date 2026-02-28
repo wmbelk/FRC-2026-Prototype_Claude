@@ -10,9 +10,13 @@ class ShootWithTransferCompensation(commands2.Command):
     reading transfer motor 2's RPM error and adding a proportion of it to
     the shooter's output each cycle.
 
-    The gain is tunable via SmartDashboard ("Shooter/Compensation Gain").
-    Start at 0.0 and increase slowly until subsequent shots stay consistent.
-    A positive gain boosts the shooter when the transfer motor slows under load.
+    Compensation only activates once the shooter has reached its target speed
+    (within "Shooter/Ready Threshold %"). During spin-up the motor runs
+    normally with no feedforward so the correction doesn't over-compensate.
+
+    Both values are tunable live via SmartDashboard:
+      "Shooter/Compensation Gain"  — start at 0.0, increase slowly
+      "Shooter/Ready Threshold %"  — % of target RPM within which shooter is "ready"
     """
 
     def __init__(
@@ -26,9 +30,16 @@ class ShootWithTransferCompensation(commands2.Command):
         self.addRequirements(shooter)
 
         SmartDashboard.putNumber("Shooter/Compensation Gain", 0.0)
+        SmartDashboard.putNumber("Shooter/Ready Threshold %", 10.0)
 
     def execute(self):
         gain = SmartDashboard.getNumber("Shooter/Compensation Gain", 0.0)
+        threshold_pct = SmartDashboard.getNumber("Shooter/Ready Threshold %", 10.0) / 100.0
+
+        if not self._shooter.is_at_target(threshold_pct):
+            self._shooter.spin()
+            return
+
         rpm_error = self._transfer.get_rpm_error()
         extra_rps = (rpm_error * gain) / 60.0
         self._shooter.spin(extra_rps)

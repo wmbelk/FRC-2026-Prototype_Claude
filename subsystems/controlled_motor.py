@@ -55,6 +55,12 @@ class ControlledTalonMotor(commands2.Subsystem):
         target_rpm = self._RPS * 60
         return target_rpm - actual_rpm
 
+    def is_at_target(self, threshold_pct: float = 0.1) -> bool:
+        """Returns True when actual RPM is within threshold_pct (0–1) of target RPM."""
+        if self._RPS == 0:
+            return True
+        return abs(self.get_rpm_error()) / abs(self._RPS * 60) <= threshold_pct
+
     def spin(self, extra_rps: float = 0.0):
         # self._motor.set_control(self.velocity_voltage.with_velocity(self._RPS))
         self._motor.set((self._RPS + extra_rps) / 100)
