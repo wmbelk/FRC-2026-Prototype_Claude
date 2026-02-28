@@ -72,6 +72,11 @@ class ControlledTalonMotor(commands2.Subsystem):
         """Return the current motor velocity in rotations per second (always positive)."""
         return abs(self._motor.get_velocity().value)
 
+    @property
+    def target_rps(self) -> float:
+        """Current commanded target velocity in rotations per second (always positive)."""
+        return abs(self._RPS)
+
     def stop_motor(self):
         self._motor.set(0)
         if self.enable_smartdashboard:

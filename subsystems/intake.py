@@ -43,6 +43,10 @@ class IntakeSubsystem(commands2.Subsystem):
         SmartDashboard.putNumber("Intake/Deploy Initial Position", kIntakeDeployer.INITIAL_POSITION)
         SmartDashboard.putNumber("Intake/Deploy Active Position", kIntakeDeployer.DEPLOYED_POSITION)
 
+    def get_spinner_rps(self) -> float:
+        """Return current spinner velocity in rotations per second (always positive)."""
+        return abs(self._spinner.get_velocity().value)
+
     def deploy(self):
         self._spinner.set_control(self._spinner_velocity)
         self.left_deployer.set_control(
