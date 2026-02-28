@@ -49,9 +49,15 @@ class ControlledTalonMotor(commands2.Subsystem):
             _plant = LinearSystemId.flywheelSystem(_model, moment_of_inertia, 1.0)
             self._flywheel_sim = FlywheelSim(_plant, _model)
 
-    def spin(self):
+    def get_rpm_error(self) -> float:
+        """Returns target_rpm - actual_rpm. Magnitude grows when motor slows under load."""
+        actual_rpm = self._motor.get_velocity().value * 60
+        target_rpm = self._RPS * 60
+        return target_rpm - actual_rpm
+
+    def spin(self, extra_rps: float = 0.0):
         # self._motor.set_control(self.velocity_voltage.with_velocity(self._RPS))
-        self._motor.set(self._RPS / 100)
+        self._motor.set((self._RPS + extra_rps) / 100)
 
         if self.enable_smartdashboard:
             SmartDashboard.putBoolean(f"{self.name} Working", True)

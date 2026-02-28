@@ -9,6 +9,7 @@ from util.custom_controller import XboxController
 from commands import auto_align, drive_commands, vision_odometry
 from commands.path_commands import go_back_with_path, drive_to_a_spot, drive_to_a_spot_sequence
 from commands.spin_motor import SpinMotor
+from commands.shoot_with_compensation import ShootWithTransferCompensation
 
 from constants.vision import kCamera
 from constants.indexer import kSpindexer, kTrasnfer
@@ -91,12 +92,14 @@ class RobotContainer:
 
         self._controller_1.rightBumper().whileTrue(SpinMotor(self.spindex_motor))
 
-        self._controller_1.leftTrigger().whileTrue(SpinMotor(self.shooter_motor))
+        self._controller_1.leftTrigger().whileTrue(
+            ShootWithTransferCompensation(self.shooter_motor, self.transfer_motor2)
+        )
 
         self._controller_1.b().whileTrue(
             ParallelCommandGroup(
                 auto_align.HubAlign(self._drivetrain, self._controller_1),
-                SpinMotor(self.shooter_motor),
+                ShootWithTransferCompensation(self.shooter_motor, self.transfer_motor2),
             )
         )
         self._controller_1.a().whileTrue(
