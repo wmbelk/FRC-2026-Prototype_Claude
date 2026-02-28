@@ -1,7 +1,12 @@
+import math
+
 import commands2
 import phoenix6
+import wpilib
+from wpilib import RobotController, SmartDashboard
+from wpilib.simulation import FlywheelSim
+from wpimath.system.plant import DCMotor, LinearSystemId
 
-from wpilib import SmartDashboard
 
 class ControlledTalonMotor(commands2.Subsystem):
     def __init__(
@@ -11,6 +16,8 @@ class ControlledTalonMotor(commands2.Subsystem):
         config: phoenix6.configs.TalonFXConfiguration,
         target_rpm: float,
         enable_smartdashboard=False,
+        motor_type=None,
+        moment_of_inertia: float = 0.001,
     ):
         super().__init__()
 
@@ -36,6 +43,11 @@ class ControlledTalonMotor(commands2.Subsystem):
             SmartDashboard.putBoolean(f"{self.name} Working", False)
         
         self._motor.setNeutralMode(phoenix6.signals.NeutralModeValue.COAST)
+
+        if wpilib.RobotBase.isSimulation():
+            _model = motor_type if motor_type is not None else DCMotor.krakenX60(1)
+            _plant = LinearSystemId.flywheelSystem(_model, moment_of_inertia, 1.0)
+            self._flywheel_sim = FlywheelSim(_plant, _model)
 
     def spin(self):
         # self._motor.set_control(self.velocity_voltage.with_velocity(self._RPS))
@@ -75,3 +87,11 @@ class ControlledTalonMotor(commands2.Subsystem):
                 self.cfg.slot0.k_i = SmartDashboard.getNumber(f"{self.name} k_i", 0)
                 self.cfg.slot0.k_d = SmartDashboard.getNumber(f"{self.name} k_d", 0)
                 self._motor.configurator.apply(self.cfg)
+
+    def simulationPeriodic(self):
+        self._motor.sim_state.set_supply_voltage(RobotController.getBatteryVoltage())
+        self._flywheel_sim.setInputVoltage(self._motor.sim_state.motor_voltage)
+        self._flywheel_sim.update(0.02)
+        sim_rps = self._flywheel_sim.getAngularVelocity() / (2 * math.pi)
+        self._motor.sim_state.set_rotor_velocity(sim_rps)
+        self._motor.sim_state.add_rotor_position(sim_rps * 0.02)

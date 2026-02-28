@@ -67,5 +67,8 @@ class SwerveDriveTrain(commands2.Subsystem):
     def _stop(self):
         self.drive_with_values(velocity_x=0, velocity_y=0, rotation_rate=0)
 
+    def periodic(self):
+        self._field.setRobotPose(self.get_state().pose)
+
     def get_state(self) -> CustomSwerve.DriveState:
         return CustomSwerve.BuildDriveState(self._drivetrain.get_state())
