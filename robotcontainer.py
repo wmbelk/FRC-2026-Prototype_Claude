@@ -14,17 +14,16 @@ from constants.vision import kCamera
 from constants.indexer import kSpindexer, kTrasnfer
 from constants.key_poses import kPoses
 from constants.shooter import kShooterMotor
-from constants.intake import kIntakeMotor
-
 # from pathplannerlib.auto import NamedCommands
 
 from subsystems.drivetrain import drivetrain
 from subsystems.vision import mono_limelight
+from subsystems.intake import IntakeSubsystem
 
 from subsystems.controlled_motor import ControlledTalonMotor
 from commands2.button import CommandXboxController
 
-# from subsystems.intake import IntakeSubsystem
+from commands.intake_commands import IntakeCommand
 
 from commands2 import button, ParallelCommandGroup, SequentialCommandGroup, WaitCommand
 
@@ -58,13 +57,7 @@ class RobotContainer:
             kTrasnfer.motor_2._CONFIG,
             kTrasnfer.motor_2.TARGET_RPM,
         )
-        self.intake_motor = ControlledTalonMotor(
-            "Intake Motor",
-            kIntakeMotor.CAN_ID,
-            kIntakeMotor._CONFIG,
-            kIntakeMotor.TARGET_RPM,
-            enable_smartdashboard=True,
-        )
+        self.intake = IntakeSubsystem()
         self.shooter_motor = ControlledTalonMotor(
             "Shooter",
             kShooterMotor.CAN_ID,
@@ -113,7 +106,7 @@ class RobotContainer:
 
         
         self._controller_2.rightTrigger().whileTrue(
-            SpinMotor(self.intake_motor)
+            IntakeCommand(self.intake)
         )
 
     def getAutonomousCommand(self):

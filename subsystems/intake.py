@@ -4,7 +4,7 @@ from phoenix6.controls import Follower
 from phoenix6 import signals
 
 from wpilib import SmartDashboard
-from constants.intake import kIntakeDeployer
+from constants.intake import kIntakeDeployer, kIntakeMotor
 from util.editable_pid import EditablePID
 
 
@@ -12,13 +12,12 @@ class IntakeSubsystem(commands2.Subsystem):
     def __init__(self):
         super().__init__()
 
+        # Deployer arms — left leads, right follows opposed
         self.left_deployer = phoenix6.hardware.TalonFX(kIntakeDeployer.LEFT_CAN_ID, "rio")
         self.right_deployer = phoenix6.hardware.TalonFX(kIntakeDeployer.RIGHT_CAN_ID, "rio")
 
         self.deployer_cfg = kIntakeDeployer._CONFIG
-
         self.left_deployer.configurator.apply(self.deployer_cfg)
-
         self.right_deployer.set_control(
             Follower(
                 self.left_deployer.device_id,
@@ -27,6 +26,13 @@ class IntakeSubsystem(commands2.Subsystem):
         )
 
         self.deployer_position_voltage = phoenix6.controls.PositionVoltage(position=0, slot=0)
+
+        # Spinner — horizontal intake wheel that directs balls to the chute
+        self._spinner = phoenix6.hardware.TalonFX(kIntakeMotor.CAN_ID, "rio")
+        self._spinner.configurator.apply(kIntakeMotor._CONFIG)
+        self._spinner_velocity = phoenix6.controls.VelocityVoltage(
+            velocity=kIntakeMotor.TARGET_RPM / 60, slot=0
+        )
 
         self.state: str = "undeployed"
 
@@ -38,6 +44,7 @@ class IntakeSubsystem(commands2.Subsystem):
         SmartDashboard.putNumber("Intake/Deploy Active Position", kIntakeDeployer.DEPLOYED_POSITION)
 
     def deploy(self):
+        self._spinner.set_control(self._spinner_velocity)
         self.left_deployer.set_control(
             self.deployer_position_voltage
             .with_position(kIntakeDeployer.DEPLOYED_POSITION)
@@ -46,6 +53,7 @@ class IntakeSubsystem(commands2.Subsystem):
         self.state = "deploying"
 
     def undeploy(self):
+        self._spinner.disable()
         self.left_deployer.set_control(
             self.deployer_position_voltage
             .with_position(kIntakeDeployer.INITIAL_POSITION)
@@ -77,6 +85,7 @@ class IntakeSubsystem(commands2.Subsystem):
             self.state = "undeployed"
 
         SmartDashboard.putString("Intake/State", self.state)
+        SmartDashboard.putNumber("Intake/Spinner RPM", self._spinner.get_velocity().value * 60)
         kIntakeDeployer.INITIAL_POSITION = SmartDashboard.getNumber(
             "Intake/Deploy Initial Position", kIntakeDeployer.INITIAL_POSITION
         )
