@@ -11,8 +11,8 @@ class kIntakeDeployer:
     _CONFIG.slot1.k_i = 0
     _CONFIG.slot1.k_d = 0
 
-    LEFT_CAN_ID = 0
-    RIGHT_CAN_ID = 0
+    LEFT_CAN_ID = 32   # TODO: verify on physical robot
+    RIGHT_CAN_ID = 33  # TODO: verify on physical robot
 
     INITIAL_POSITION = 0
     DEPLOYED_POSITION = 0.5
