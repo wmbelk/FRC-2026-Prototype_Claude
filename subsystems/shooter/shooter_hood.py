@@ -128,9 +128,8 @@ class ShooterHood(commands2.Subsystem):
 
         arm_rad = self._arm_sim.getAngle()
         arm_rps_motor = (self._arm_sim.getVelocity() / (2 * math.pi)) * kHoodMotor.GEAR_RATIO
-        motor_pos = (arm_rad / (2 * math.pi)) * kHoodMotor.GEAR_RATIO
 
-        self._motor.sim_state.set_rotor_position(motor_pos)
+        self._motor.sim_state.add_rotor_position(arm_rps_motor * 0.02)
         self._motor.sim_state.set_rotor_velocity(arm_rps_motor)
 
         # Soft limits at physical stops
