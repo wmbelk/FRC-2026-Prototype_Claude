@@ -9,11 +9,12 @@ from util.custom_controller import XboxController
 from commands import auto_align, drive_commands, vision_odometry
 from commands.path_commands import go_back_with_path, drive_to_a_spot, drive_to_a_spot_sequence
 from commands.spin_motor import SpinMotor
+from commands.aim_hood import AimHood
 
 from constants.vision import kCamera
 from constants.indexer import kSpindexer, kTrasnfer
 from constants.key_poses import kPoses
-from constants.shooter import kShooterMotor
+from constants.shooter import kShooterMotor, kHoodMotor
 from constants.intake import kIntakeMotor
 
 # from pathplannerlib.auto import NamedCommands
@@ -22,6 +23,7 @@ from subsystems.drivetrain import drivetrain
 from subsystems.vision import mono_limelight
 
 from subsystems.controlled_motor import ControlledTalonMotor
+from subsystems.shooter.shooter_hood import ShooterHood
 from commands2.button import CommandXboxController
 
 # from subsystems.intake import IntakeSubsystem
@@ -72,6 +74,7 @@ class RobotContainer:
             kShooterMotor.TARGET_RPM,
             enable_smartdashboard=True
         )
+        self.shooter_hood = ShooterHood()
 
         self.configureButtonBindings()
 
@@ -79,6 +82,11 @@ class RobotContainer:
         
         self._drivetrain.setDefaultCommand(
             drive_commands.ControllerDrive(self._drivetrain, self._controller_1)
+        )
+
+        # Hood always tracks distance to hub; compensates for actual shooter RPS when flying
+        self.shooter_hood.setDefaultCommand(
+            AimHood(self.shooter_hood, self._drivetrain, self.shooter_motor)
         )
 
         self._controller_1.rightTrigger().whileTrue(
