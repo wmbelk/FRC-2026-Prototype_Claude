@@ -3,8 +3,8 @@ import phoenix6
 from phoenix6.controls import Follower
 from phoenix6 import signals
 
-from wpilib import SmartDashboard, DigitalInput
-from constants.intake import kIntakeDeployer, kIntakeMotor
+from wpilib import SmartDashboard
+from constants.intake import kIntakeDeployer
 from util.editable_pid import EditablePID
 
 
@@ -12,8 +12,6 @@ class IntakeSubsystem(commands2.Subsystem):
     def __init__(self):
         super().__init__()
 
-        # TODO: Set correct CAN IDs in constants/intake.py before enabling
-        # kIntakeDeployer.LEFT_CAN_ID and kIntakeDeployer.RIGHT_CAN_ID are currently 0
         self.left_deployer = phoenix6.hardware.TalonFX(kIntakeDeployer.LEFT_CAN_ID, "rio")
         self.right_deployer = phoenix6.hardware.TalonFX(kIntakeDeployer.RIGHT_CAN_ID, "rio")
 
