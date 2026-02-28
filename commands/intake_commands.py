@@ -1,12 +1,22 @@
-from subsystems.intake import IntakeSubsystem
-from commands2 import Command
+import commands2
 
-class IntakeCommand(Command):
-    def __init__(self, intake_subsystem : IntakeSubsystem):
-        self.intake_subsystem = intake_subsystem
-        
+from subsystems.intake import IntakeSubsystem
+
+
+class IntakeCommand(commands2.Command):
+    def __init__(self, intake_subsystem: IntakeSubsystem):
+        super().__init__()
+        self._intake = intake_subsystem
+        self.addRequirements(intake_subsystem)
+
     def initialize(self):
-        self.intake_subsystem.deploy()
-    
-    def end(self, interrupted):
-        self.intake_subsystem.undeploy()
+        self._intake.deploy()
+
+    def execute(self):
+        pass
+
+    def isFinished(self) -> bool:
+        return False
+
+    def end(self, interrupted: bool):
+        self._intake.undeploy()
