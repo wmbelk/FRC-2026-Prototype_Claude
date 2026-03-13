@@ -69,14 +69,12 @@ class RobotContainer:
             kIntakeMotor.CAN_ID,
             kIntakeMotor._CONFIG,
             kIntakeMotor.TARGET_RPM,
-            enable_smartdashboard=True,
         )
         self.shooter_motor = ControlledTalonMotor(
             "Shooter",
             kShooterMotor.CAN_ID,
             kShooterMotor._CONFIG,
             kShooterMotor.TARGET_RPM,
-            enable_smartdashboard=True,
             coast_when_neutral=True
         )
         
