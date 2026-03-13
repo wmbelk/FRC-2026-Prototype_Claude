@@ -4,41 +4,47 @@
 # the WPILib BSD license file in the root directory of this project.
 #
 
+from commands.auto_align import align_with_controller
 from util.custom_controller import XboxController
+from util.time_manager import TimeManager
 
-from commands import auto_align, drive_commands, vision_odometry
-from commands.path_commands import go_back_with_path, drive_to_a_spot, drive_to_a_spot_sequence
+from commands import drive_commands, vision_odometry
+from commands.path_commands import custom_path_commands, go_back_with_path
 from commands.spin_motor import SpinMotor
+from commands.climb import ClimbDown, ClimbUp
 
 from constants.vision import kCamera
 from constants.indexer import kSpindexer, kTrasnfer
-from constants.key_poses import kPoses
 from constants.shooter import kShooterMotor
 from constants.intake import kIntakeMotor
-
-# from pathplannerlib.auto import NamedCommands
+from constants.climb import kClimb
+from constants.drive import kDriveConfig
+from constants.led import kLED
 
 from subsystems.drivetrain import drivetrain
 from subsystems.vision import mono_limelight
-
 from subsystems.controlled_motor import ControlledTalonMotor
-from commands2.button import CommandXboxController
+from subsystems.shooter.shooter_hood import ShooterHood
+from subsystems.led.LED_controller import CANdleLEDController
 
+from subsystems.climbsubsystem import ClimbSubsystem
 # from subsystems.intake import IntakeSubsystem
 
-from commands2 import button, ParallelCommandGroup, SequentialCommandGroup, WaitCommand
+from commands2 import ParallelCommandGroup, cmd
 
 class RobotContainer:
     def __init__(self) -> None:
+        
         self._controller_1 = (
-            XboxController(port=0).with_deadband(0.05).with_smoothing(0.1)
+            XboxController(port=0).with_deadband(0.1).with_smoothing(0.1)
         )
         self._controller_2 = (
-            XboxController(port=1).with_deadband(0.05).with_smoothing(0.1)
+            XboxController(port=1).with_deadband(0.1).with_smoothing(0.1)
         )
 
         self._drivetrain = drivetrain.SwerveDriveTrain()
         self.mono_vision = mono_limelight.Vision(kCamera.llFront.NAME)
+        self.LED_controller = CANdleLEDController(kLED.CAN_ID)
 
         self.spindex_motor = ControlledTalonMotor(
             "Spindex",
@@ -70,74 +76,112 @@ class RobotContainer:
             kShooterMotor.CAN_ID,
             kShooterMotor._CONFIG,
             kShooterMotor.TARGET_RPM,
-            enable_smartdashboard=True
+            enable_smartdashboard=True,
+            coast_when_neutral=True
         )
+        
+        self.climb_subsystem = ClimbSubsystem()
+        
+        self.hood_motor = ShooterHood()
+        
+        self.custom_path_commands = custom_path_commands.CustomPathCommands(
+            self._drivetrain,
+            hood_subsystem = self.hood_motor,
+            shooter_subsystem = self.shooter_motor,
+            climb_subsyetem = self.climb_subsystem
+        )
+        
+        self.time_manager = TimeManager()
 
         self.configureButtonBindings()
 
     def configureButtonBindings(self) -> None:
         
-        self._drivetrain.setDefaultCommand(
-            drive_commands.ControllerDrive(self._drivetrain, self._controller_1)
-        )
-
-        self._controller_1.rightTrigger().whileTrue(
-            ParallelCommandGroup(
-                SpinMotor(self.transfer_motor1),
-                SpinMotor(self.transfer_motor2),
-                SpinMotor(self.spindex_motor),
-            )
-        )
-
-        self._controller_1.rightBumper().whileTrue(SpinMotor(self.spindex_motor))
-
-        self._controller_1.leftTrigger().whileTrue(SpinMotor(self.shooter_motor))
-
-        self._controller_1.b().whileTrue(
-            ParallelCommandGroup(
-                auto_align.HubAlign(self._drivetrain, self._controller_1),
-                SpinMotor(self.shooter_motor),
-            )
-        )
-        self._controller_1.a().whileTrue(
-            auto_align.HubAlign(self._drivetrain, self._controller_1),
-        )
-
+        '''
+        ideal buttons idea
+        
+        Controller 1:
+            - Left Joystick: Move (field-centric)
+            - Right Joystick: Rotate
+            - Right Bumper: Auto drive toward fuel (Ben's magic button)
+            - Right Trigger: Shoot + Align to best spot
+            - Left Bumper: Magic Button
+            - Left Trigger: Move Slower
+            - Letter Buttons: Specific Paths
+            - POV Buttons: More Specific Paths
+        
+        Controller 2:
+            - Right Trigger (hold): Toggle Intake
+            - POV Up (press): Climb up
+            - POV Down (press): Climb Down
+            - idea:
+                - Left Joystick: manually change an offset angle for hub shooting just in case
+        '''
+        
         self.mono_vision.setDefaultCommand(
             vision_odometry.UpdateOdometry(self.mono_vision, self._drivetrain)
         )
         
-        self._controller_1.x().whileTrue(
-            go_back_with_path.GoBackWithPath(self._drivetrain)
+        # CONTROLLER 1
+        self._drivetrain.setDefaultCommand(
+            drive_commands.ControllerDrive(self._drivetrain, self._controller_1)
         )
 
+        self._controller_1.rightBumper().whileTrue(
+            ParallelCommandGroup(
+                SpinMotor(self.transfer_motor1),
+                SpinMotor(self.transfer_motor2),
+                SpinMotor(self.spindex_motor),
+                SpinMotor(self.shooter_motor),
+            )
+        )
+        
+        self._controller_1.rightTrigger().whileTrue(
+            align_with_controller.ConditionalAlignAndShoot(
+                self._drivetrain, 
+                self._controller_1, 
+                self.shooter_motor, 
+                self.spindex_motor,
+                self.transfer_motor1,
+                self.transfer_motor2,
+                self.hood_motor,
+                self.LED_controller
+            )
+        )
+        
+        self._controller_1.leftBumper().whileTrue(
+            go_back_with_path.GoBackWithPath(self._drivetrain)
+        )
+        
+        self._controller_1.leftTrigger().whileTrue(
+            cmd.runEnd(
+                lambda: self._drivetrain.change_speed_mult(kDriveConfig.SLOW_SPEED_MULT, kDriveConfig.SLOW_ROTATION_MULT),
+                lambda: self._drivetrain.change_speed_mult()
+            )
+        )
+
+        # self._controller_1.povLeft().whileTrue(self.custom_path_commands.left_trench_advance)
+        # self._controller_1.povDown().whileTrue(self.custom_path_commands.left_bump_advance)
+        # self._controller_1.povUp().whileTrue(self.custom_path_commands.right_bump_advance)
+        # self._controller_1.povRight().whileTrue(self.custom_path_commands.right_trench_advance)
+    
+        self._controller_1.x().whileTrue(self.custom_path_commands.left_trench)
+        self._controller_1.a().whileTrue(self.custom_path_commands.left_bump)
+        self._controller_1.y().whileTrue(self.custom_path_commands.right_bump)
+        self._controller_1.b().whileTrue(self.custom_path_commands.right_trench)
+        
+        # CONTROLLER 2
+        self._controller_2.povUp().onTrue(
+            ClimbUp(self.climb_subsystem)
+        )
+        
+        self._controller_2.povDown().onTrue(
+            ClimbDown(self.climb_subsystem)
+        )
         
         self._controller_2.rightTrigger().whileTrue(
             SpinMotor(self.intake_motor)
         )
 
     def getAutonomousCommand(self):
-        pass
-        
-        start_shooting_point_command = drive_to_a_spot.DriveToASpot(
-            self._drivetrain,
-            kPoses.start_shooting_point
-        ).with_reflected_red_alliance_pose()
-        
-        bottom_climb_test_command = drive_to_a_spot.DriveToASpot(
-            self._drivetrain,
-            kPoses.bottom_climb_test
-        ).with_reflected_red_alliance_pose().with_precise_values()
-        
-        autonomous_command = SequentialCommandGroup(
-            # Drive to a spot
-            start_shooting_point_command,
-            # Do some shooting
-            WaitCommand(2),
-            # Drive to the climber
-            bottom_climb_test_command,
-            # Do some climbing
-            WaitCommand(2)
-        )
-        
-        return autonomous_command
+        return self.custom_path_commands.test_auto
