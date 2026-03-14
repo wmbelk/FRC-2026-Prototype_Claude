@@ -12,6 +12,7 @@ from commands import drive_commands, vision_odometry
 from commands.path_commands import custom_path_commands, go_back_with_path
 from commands.spin_motor import SpinMotor
 from commands.climb import ClimbDown, ClimbUp
+from commands.intake_auto_retract import IntakeAutoRetract
 
 from constants.vision import kCamera
 from constants.indexer import kSpindexer, kTrasnfer
@@ -30,7 +31,7 @@ from subsystems.led.LED_controller import CANdleLEDController
 from subsystems.climbsubsystem import ClimbSubsystem
 # from subsystems.intake import IntakeSubsystem
 
-from commands2 import ParallelCommandGroup, cmd
+from commands2 import ParallelCommandGroup, cmd, Trigger
 
 class RobotContainer:
     def __init__(self) -> None:
@@ -179,6 +180,16 @@ class RobotContainer:
         
         self._controller_2.rightTrigger().whileTrue(
             SpinMotor(self.intake_motor)
+        )
+
+        # Auto-retract the intake when the robot is projected to enter the danger zone.
+        # Holding the deploy button (rightTrigger) overrides this — SpinMotor takes over
+        # because it also requires intake_motor and the trigger condition goes False.
+        self._intake_auto_retract = IntakeAutoRetract(self.intake_motor, self._drivetrain)
+        (
+            Trigger(self._intake_auto_retract.is_danger_zone_active)
+            .and_(self._controller_2.rightTrigger().negate())
+            .whileTrue(self._intake_auto_retract)
         )
 
     def getAutonomousCommand(self):

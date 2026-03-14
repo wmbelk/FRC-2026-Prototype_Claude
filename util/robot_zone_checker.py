@@ -1,4 +1,4 @@
-from wpimath.geometry import Pose2d, Rotation2d
+from wpimath.geometry import Pose2d, Rotation2d, Transform2d
 from util.flip_util import FlipUtil
 
 class RobotZoneChecker:
@@ -51,7 +51,23 @@ class RobotZoneChecker:
     @staticmethod
     def is_in_right_neutral_zone(pose : Pose2d):
         return RobotZoneChecker.is_within_pose(
-            pose, 
+            pose,
             FlipUtil.fieldPose(Pose2d(RobotZoneChecker.left_neutral_zone_x, 0, Rotation2d())),
             FlipUtil.fieldPose(Pose2d(RobotZoneChecker.right_neutral_zone_x, RobotZoneChecker.field_height / 2, Rotation2d())),
         )
+
+    @staticmethod
+    def is_projected_in_danger_zone(
+        pose: Pose2d,
+        velocity: Transform2d,
+        lookahead_seconds: float,
+        zone_x_margin: float,
+        hub_x: float,
+    ) -> bool:
+        """Returns True if the robot's projected position is within zone_x_margin of hub_x in the x direction.
+
+        Projects the current pose forward by (velocity * lookahead_seconds) and checks whether
+        the resulting x coordinate falls inside the danger band [hub_x - margin, hub_x + margin].
+        """
+        projected_pose = pose.transformBy(velocity * lookahead_seconds)
+        return abs(projected_pose.X() - hub_x) <= zone_x_margin
