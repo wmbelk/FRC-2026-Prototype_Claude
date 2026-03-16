@@ -1,0 +1,8 @@
+{
+  "name": "frc-team2556",
+  "description": "FRC Team 2556 RobotPy coding agents — command review, odometry tuning, and simulation validation for the 2026 prototype robot",
+  "author": {
+    "name": "Team 2556",
+    "email": "team2556@example.com"
+  }
+}
